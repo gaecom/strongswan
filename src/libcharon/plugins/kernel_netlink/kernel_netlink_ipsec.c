@@ -1318,13 +1318,14 @@ static void format_mark(char *buf, int buflen, mark_t mark)
 /**
  * Add a XFRM mark to message if required
  */
-static bool add_mark(struct nlmsghdr *hdr, int buflen, mark_t mark)
+static bool add_mark(struct nlmsghdr *hdr, enum xfrm_attr_type_t type,
+					 int buflen, mark_t mark)
 {
 	if (mark.value | mark.mask)
 	{
 		struct xfrm_mark *xmrk;
 
-		xmrk = netlink_reserve(hdr, buflen, XFRMA_MARK, sizeof(*xmrk));
+		xmrk = netlink_reserve(hdr, buflen, type, sizeof(*xmrk));
 		if (!xmrk)
 		{
 			return FALSE;
@@ -1821,7 +1822,13 @@ METHOD(kernel_ipsec_t, add_sa, status_t,
 		 * checks it marks them "checksum ok" so OA isn't needed. */
 	}
 
-	if (!add_mark(hdr, sizeof(request), id->mark))
+	if (!add_mark(hdr, XFRMA_MARK, sizeof(request), id->mark))
+	{
+		goto failed;
+	}
+
+	if (ipcomp == IPCOMP_NONE &&
+		!add_mark(hdr, XFRMA_ROUTING_MARK, sizeof(request), data->mark))
 	{
 		goto failed;
 	}
@@ -1948,7 +1955,7 @@ static void get_replay_state(private_kernel_netlink_ipsec_t *this,
 	aevent_id->sa_id.proto = sa->proto;
 	aevent_id->sa_id.family = sa->dst->get_family(sa->dst);
 
-	if (!add_mark(hdr, sizeof(request), sa->mark))
+	if (!add_mark(hdr, XFRMA_MARK, sizeof(request), sa->mark))
 	{
 		return;
 	}
@@ -2046,7 +2053,7 @@ METHOD(kernel_ipsec_t, query_sa, status_t,
 	sa_id->proto = id->proto;
 	sa_id->family = id->dst->get_family(id->dst);
 
-	if (!add_mark(hdr, sizeof(request), id->mark))
+	if (!add_mark(hdr, XFRMA_MARK, sizeof(request), id->mark))
 	{
 		return FAILED;
 	}
@@ -2150,7 +2157,7 @@ METHOD(kernel_ipsec_t, del_sa, status_t,
 	sa_id->proto = id->proto;
 	sa_id->family = id->dst->get_family(id->dst);
 
-	if (!add_mark(hdr, sizeof(request), id->mark))
+	if (!add_mark(hdr, XFRMA_MARK, sizeof(request), id->mark))
 	{
 		return FAILED;
 	}
@@ -2225,7 +2232,7 @@ METHOD(kernel_ipsec_t, update_sa, status_t,
 	sa_id->proto = id->proto;
 	sa_id->family = id->dst->get_family(id->dst);
 
-	if (!add_mark(hdr, sizeof(request), id->mark))
+	if (!add_mark(hdr, XFRMA_MARK, sizeof(request), id->mark))
 	{
 		return FAILED;
 	}
@@ -2682,7 +2689,7 @@ static status_t add_policy_internal(private_kernel_netlink_ipsec_t *this,
 		}
 	}
 
-	if (!add_mark(hdr, sizeof(request), ipsec->mark))
+	if (!add_mark(hdr, XFRMA_MARK, sizeof(request), ipsec->mark))
 	{
 		policy_change_done(this, policy);
 		return FAILED;
@@ -2877,7 +2884,7 @@ METHOD(kernel_ipsec_t, query_policy, status_t,
 	policy_id->sel = ts2selector(id->src_ts, id->dst_ts, id->interface);
 	policy_id->dir = id->dir;
 
-	if (!add_mark(hdr, sizeof(request), id->mark))
+	if (!add_mark(hdr, XFRMA_MARK, sizeof(request), id->mark))
 	{
 		return FAILED;
 	}
@@ -3049,7 +3056,7 @@ METHOD(kernel_ipsec_t, del_policy, status_t,
 	policy_id->sel = current->sel;
 	policy_id->dir = id->dir;
 
-	if (!add_mark(hdr, sizeof(request), id->mark))
+	if (!add_mark(hdr, XFRMA_MARK, sizeof(request), id->mark))
 	{
 		policy_change_done(this, current);
 		return FAILED;

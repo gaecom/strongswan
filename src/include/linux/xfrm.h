@@ -302,6 +302,8 @@ enum xfrm_attr_type_t {
 	XFRMA_ADDRESS_FILTER,	/* struct xfrm_address_filter */
 	XFRMA_PAD,
 	XFRMA_OFFLOAD_DEV,	/* struct xfrm_state_offload */
+	XFRMA_OUTPUT_MARK,	/* __u32 Deprecated, pleae use XFRMA_ROUTING_MARK. */
+	XFRMA_ROUTING_MARK,	/* struct xfrm_mark */
 	__XFRMA_MAX
 
 #define XFRMA_MAX (__XFRMA_MAX - 1)
