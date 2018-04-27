@@ -557,8 +557,8 @@ METHOD(job_t, terminate_ike_execute, job_requeue_t,
 	listener->ike_sa = ike_sa;
 	listener->lock->unlock(listener->lock);
 
-	if (ike_sa->delete(ike_sa, FALSE) != DESTROY_ME)
-	{	/* delete failed */
+	if (ike_sa->delete(ike_sa, listener->limits) != DESTROY_ME)
+	{	/* delete queued */
 		listener->status = FAILED;
 		charon->ike_sa_manager->checkin(charon->ike_sa_manager, ike_sa);
 	}
@@ -575,7 +575,7 @@ METHOD(job_t, terminate_ike_execute, job_requeue_t,
 }
 
 METHOD(controller_t, terminate_ike, status_t,
-	controller_t *this, uint32_t unique_id,
+	controller_t *this, uint32_t unique_id, bool force,
 	controller_cb_t callback, void *param, u_int timeout)
 {
 	interface_job_t *job;
@@ -610,13 +610,24 @@ METHOD(controller_t, terminate_ike, status_t,
 
 	if (callback == NULL)
 	{
+		job->listener.limits = force;
 		terminate_ike_execute(job);
 	}
 	else
 	{
+		if (!timeout)
+		{
+			job->listener.limits = force;
+		}
 		if (wait_for_listener(job, timeout))
 		{
 			job->listener.status = OUT_OF_RES;
+
+			if (force)
+			{	/* force termination once timeout is reached */
+				job->listener.limits = force;
+				terminate_ike_execute(job);
+			}
 		}
 	}
 	status = job->listener.status;
